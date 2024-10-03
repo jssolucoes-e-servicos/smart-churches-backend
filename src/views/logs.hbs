@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Logs</title>
+  <script>
+    // Guardar os logs recebidos no frontend
+    let allLogs = [];
+
+    // Função para renderizar logs filtrados
+    function renderLogs(logs) {
+      const logList = document.getElementById('log-list');
+      logList.innerHTML = ''; // Limpa os logs atuais
+
+      // Renderiza cada log no HTML
+      logs.forEach(log => {
+        const logItem = document.createElement('li');
+        logItem.innerHTML = `
+          <strong>Level:</strong> ${log.level} <br />
+          <strong>Origin:</strong> ${log.origin} <br />
+          <strong>Date:</strong> ${log.date} <br />
+          <strong>Message:</strong> ${log.message}
+        `;
+        logList.appendChild(logItem);
+      });
+
+      // Se não houver logs para exibir
+      if (logs.length === 0) {
+        logList.innerHTML = '<p>No logs available</p>';
+      }
+    }
+
+    // Função para filtrar os logs
+    function filterLogs() {
+      const levelFilter = document.getElementById('level-filter').value.toLowerCase();
+      const originFilter = document.getElementById('origin-filter').value.toLowerCase();
+      
+      const filteredLogs = allLogs.filter(log => {
+        return (
+          log.level.toLowerCase().includes(levelFilter) &&
+          log.origin.toLowerCase().includes(originFilter)
+        );
+      });
+
+      renderLogs(filteredLogs); // Atualiza a exibição dos logs filtrados
+    }
+  </script>
+</head>
+<body>
+  <h1>Logs</h1>
+  
+  <!-- Filtros para o frontend -->
+  <label for="level-filter">Level:</label>
+  <input id="level-filter" type="text" oninput="filterLogs()" placeholder="Filter by level" />
+
+  <label for="origin-filter">Origin:</label>
+  <input id="origin-filter" type="text" oninput="filterLogs()" placeholder="Filter by origin" />
+
+  <!-- Lista de logs -->
+  <ul id="log-list"></ul>
+
+  <script>
+    // Quando a página carregar, inicializa com os logs recebidos do backend
+    document.addEventListener('DOMContentLoaded', () => {
+      // Logs injetados do backend
+      allLogs = {{{json logs}}};  // Injetar logs como JSON no frontend
+
+      // Exibir todos os logs inicialmente
+      renderLogs(allLogs);
+    });
+  </script>
+</body>
+</html>
