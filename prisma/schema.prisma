@@ -1,0 +1,650 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum MaritalStatusEnum {
+  SINGLE
+  MARRIED
+  SEPARATE
+  DIVORCED
+  WIDOW
+}
+
+enum GenderEnum {
+  FEMALE
+  MALE
+}
+
+enum AddressTypeEnum {
+  RESIDENTIAL
+  COMMERCIAL
+  OTHER
+}
+
+enum LoginStatsEnum {
+  NOT_VERIFIELD
+  AVAILABLE
+  LOCKED
+  IN_RECOVERY
+}
+
+enum CellOrMeetMethodEnum {
+  HIBRID
+  ONLINE
+  IN_PERSON
+}
+
+enum WeekDayEnum {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+type IbgeCodesType {
+  city  String?
+  state String?
+}
+
+type LocationType {
+  lat String?
+  lng String?
+}
+
+type RecoveryCodesType {
+  one  String
+  two  String
+  thre String
+  four String
+  five String
+}
+
+type TwoFactorAuthenticationType {
+  active        Boolean?           @default(false)
+  ascii         String?
+  hex           String?
+  base32        String?
+  otpauth_url   String?
+  recoveryCodes RecoveryCodesType?
+  activedIn     DateTime?          @default(now())
+}
+
+type AddressType {
+  type         AddressTypeEnum?
+  inLine       String?
+  cep          String?
+  street       String?
+  number       String?          @default("SEM NUMERO")
+  complement   String?
+  neighborhood String?
+  city         String?
+  state        String?          @default("RS")
+  ibgeCodes    IbgeCodesType?
+  location     LocationType?
+}
+
+type PlainPrices {
+  monthly   Float
+  quarterly Float
+  biannual  Float
+  annual    Float
+}
+
+type PlainAttributes {
+  icon        String
+  description String
+}
+
+type UserShortcutsType {
+  position Int
+  hash     String @default(cuid())
+  title    String
+  url      String
+}
+
+type UserDashboardTilesType {
+  position Int
+  hash     String @default(cuid())
+  info     String
+}
+
+type UserDashboardListsType {
+  position Int
+  hash     String @default(cuid())
+  data     String
+}
+
+type UserDashboardGraphType {
+  position Int
+  hash     String @default(cuid())
+  data     String
+}
+
+type UserDashboardType {
+  tiles    UserDashboardTilesType[]
+  lists    UserDashboardListsType[]
+  graphics UserDashboardGraphType[]
+}
+
+model Plain {
+  id          String            @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String
+  attributes  PlainAttributes[]
+  prices      PlainPrices
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Church    Church[]
+
+  @@map("plains")
+}
+
+model Church {
+  id       String      @id @default(auto()) @map("_id") @db.ObjectId
+  name     String
+  fantasy  String?
+  cnpj     String?     @unique
+  ie       String?     @default("ISENTO")
+  email    String?     @unique
+  phone    String?
+  shepherd String
+  logo     String?
+  address  AddressType
+  isThirst Boolean?    @default(false)
+  plan     Plain       @relation(fields: [plainId], references: [id])
+
+  primaryColor   String?  @default("#4f46e5")
+  secondaryColor String?  @default("#f97316")
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  users         User[]
+  cells         Cell[]
+  networks      CellNetwork[]
+  departments   Department[]
+  scales        Scale[]
+  events        Event[]
+  locations     Location[]
+  cults         Cult[]
+  cultsReports  CultReport[]
+  notifications Notification[]
+  volunteers    Volunteer[]
+  sessions      Session[]
+
+  modules        UserModule[]
+  cellMeetings   CellMeeting[]
+  plainId        String                @db.ObjectId
+  configurations ChurchConfiguration[]
+
+  @@map("churches")
+}
+
+model ChurchConfiguration {
+  id                         String   @id @default(auto()) @map("_id") @db.ObjectId
+  church                     Church   @relation(fields: [churchId], references: [id])
+  churchId                   String   @db.ObjectId
+  voluntaryRequireCellMember Boolean  @default(true)
+  active                     Boolean  @default(true)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+}
+
+model Notification {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  message     String
+  type        String // sistema, evento, escala, financeiro, etc
+  channels    String[] // email, sms, push, whatsapp
+  status      String // pendente, enviada, lida, cancelada
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  readAt      DateTime?
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  church       Church   @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  churchId     String   @db.ObjectId
+  senderId     String   @db.ObjectId
+  recipientIds String[] @db.ObjectId // Array de IDs de usuários
+
+  @@map("notifications")
+}
+
+model User {
+  id             String             @id @default(auto()) @map("_id") @db.ObjectId
+  church         Church             @relation(fields: [churchId], references: [id])
+  churchId       String             @db.ObjectId
+  name           String
+  gender         GenderEnum?
+  birth          DateTime?
+  maritalStatus  MaritalStatusEnum?
+  baptismDate    DateTime?
+  conversionDate DateTime?
+  occupation     String?
+  educationLevel String?
+  observations   String?
+  hasAccess      Boolean?           @default(false)
+  loginAttempts  Int?               @default(3)
+  loginStats     LoginStatsEnum     @default(NOT_VERIFIELD)
+  inRecovery     Boolean?           @default(false)
+
+  permitChurch  Boolean?  @default(false)
+  permitPortal  Boolean?  @default(false)
+  username      String?
+  password      String
+  lastLogin     DateTime?
+  email         String?   @unique
+  phone         String?   @unique
+  photo         String?
+  member        Boolean?  @default(true)
+  memberId      String?
+  signedAt      DateTime?
+  signedBy      String?
+  isTithesPayer Boolean?  @default(false) //dizimist
+  isVoluntary   Boolean?  @default(false)
+  isVisitors    Boolean?  @default(false)
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  resetTokens        UserResetToken[]
+  sessions           Session[]
+  documents          UserDocument[]
+  addresses          UserAddress[]
+  phones             UserPhone[]
+  networksSupervisor CellNetwork[]
+  cellsLeader        Cell[]
+  cellsMeetings      CellMeetingParticipant[]
+  cellsMembership    CellMembership[]
+  departments        Department[]
+  volunteers         Volunteer[]
+  events             Event[]
+  cultReports        CultReport[]
+  modules            UserModule[]
+  configurations     UserConfiguration[]
+
+  @@index([username])
+  @@map("users")
+}
+
+model UserConfiguration {
+  id                      String                      @id @default(auto()) @map("_id") @db.ObjectId
+  user                    User                        @relation(fields: [userId], references: [id])
+  theme                   String?                     @default("dark")
+  shortcuts               UserShortcutsType[]
+  dashboard               UserDashboardType
+  twoFactorAuthentication TwoFactorAuthenticationType
+  active                  Boolean?                    @default(true)
+  createdAt               DateTime                    @default(now())
+  updatedAt               DateTime                    @updatedAt
+  userId                  String                      @db.ObjectId
+
+  @@map("users_configurations")
+}
+
+model UserResetToken {
+  id                     String   @id @default(auto()) @map("_id") @db.ObjectId
+  user                   User     @relation(fields: [userId], references: [id])
+  resetPasswordToken     String
+  resetPasswordExpiresAt DateTime
+  active                 Boolean? @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  userId                 String   @db.ObjectId
+
+  @@map("users_reset_tokens")
+}
+
+model Session {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String   @db.ObjectId
+  token      String   @unique
+  deviceInfo String?
+  active     Boolean? @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  Church     Church?  @relation(fields: [churchId], references: [id])
+  churchId   String?  @db.ObjectId
+
+  @@map("sessions")
+}
+
+model UserDocument {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  user          User     @relation(fields: [userId], references: [id])
+  userId        String   @db.ObjectId
+  documentName  String
+  documentValue String
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("users_documents")
+}
+
+model UserAddress {
+  id        String          @id @default(auto()) @map("_id") @db.ObjectId
+  user      User            @relation(fields: [userId], references: [id])
+  userId    String          @db.ObjectId
+  address   AddressType
+  type      AddressTypeEnum @default(RESIDENTIAL)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@map("users_addresses")
+}
+
+model UserPhone {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String   @db.ObjectId
+  ddd         Int      @default(52)
+  number      Int
+  operator    String?
+  description String?
+  isWhatsapp  Boolean  @default(false)
+  type        String?  @default("MOBILE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("users_phones")
+}
+
+model UserModule {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  user            User     @relation(fields: [userId], references: [id])
+  cellMember      Boolean  @default(false)
+  cellLeader      Boolean  @default(false)
+  cellSupervisor  Boolean  @default(false)
+  cellCoordinator Boolean  @default(false)
+  cellShepherd    Boolean  @default(false)
+  shepherd        Boolean  @default(false)
+  receptionist    Boolean  @default(false)
+  secretary       Boolean  @default(false)
+  deacon          Boolean  @default(false)
+  musician        Boolean  @default(false)
+  treasurer       Boolean  @default(false)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  Church          Church?  @relation(fields: [churchId], references: [id])
+  churchId        String?  @db.ObjectId
+  userId          String   @db.ObjectId
+
+  @@map("users_modules")
+}
+
+model CellNetwork {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  church       Church?  @relation(fields: [churchId], references: [id])
+  churchId     String?  @db.ObjectId
+  name         String
+  slug         String?
+  color        String?
+  image        String?
+  supervisor   User     @relation(fields: [supervisorId], references: [id])
+  supervisorId String   @db.ObjectId
+  active       Boolean? @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  cells        Cell[]
+
+  @@map("cells_networks")
+}
+
+model Cell {
+  id            String               @id @default(auto()) @map("_id") @db.ObjectId
+  Church        Church               @relation(fields: [churchId], references: [id])
+  churchId      String               @db.ObjectId
+  name          String
+  slug          String?
+  color         String?
+  image         String?
+  day           WeekDayEnum          @default(THURSDAY)
+  hour          String               @default("20:00")
+  method        CellOrMeetMethodEnum @default(IN_PERSON)
+  leader        User                 @relation(fields: [leaderId], references: [id])
+  leaderId      String               @db.ObjectId
+  host          String?
+  address       AddressType
+  network       CellNetwork          @relation(fields: [cellNetworkId], references: [id])
+  cellNetworkId String               @db.ObjectId
+  active        Boolean              @default(true) // Usando status para o active
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  meetings      CellMeeting[]
+  memberships   CellMembership[]
+  reports       CellReport[]
+
+  @@map("cells")
+}
+
+model CellMeeting {
+  id            String                   @id @default(auto()) @map("_id") @db.ObjectId
+  church        Church                   @relation(fields: [churchId], references: [id])
+  churchId      String                   @db.ObjectId
+  cell          Cell                     @relation(fields: [cellId], references: [id])
+  cellId        String                   @db.ObjectId
+  date          DateTime
+  dayOfWeek     WeekDayEnum              @default(THURSDAY)
+  hour          String                   @default("20:00")
+  start         DateTime?
+  final         DateTime?
+  method        CellOrMeetMethodEnum     @default(IN_PERSON)
+  address       AddressType?
+  realized      Boolean                  @default(false)
+  observation   String                   @default("")
+  totalPersons  Int                      @default(0)
+  totalVisitors Int                      @default(0)
+  totalMembers  Int                      @default(0)
+  photos        String[]
+  prelector     String
+  active        Boolean                  @default(true)
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  participants  CellMeetingParticipant[]
+
+  @@map("cells_meetings")
+}
+
+model CellMeetingParticipant {
+  id            String               @id @default(auto()) @map("_id") @db.ObjectId
+  meeting       CellMeeting          @relation(fields: [cellMeetingId], references: [id])
+  cellMeetingId String               @db.ObjectId
+  registered    Boolean              @default(false) @map("registred")
+  user          User?                @relation(fields: [userId], references: [id])
+  userId        String?              @db.ObjectId
+  name          String
+  reserved      Boolean              @default(true)
+  confirmed     Boolean              @default(false)
+  method        CellOrMeetMethodEnum @default(IN_PERSON)
+  active        Boolean              @default(true)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@map("cells_meetings_participants ")
+}
+
+model CellMembership {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  user         User     @relation(fields: [userId], references: [id])
+  cell         Cell     @relation(fields: [cellId], references: [id])
+  cellId       String   @db.ObjectId
+  isLeader     Boolean? @default(false)
+  isSupervisor Boolean? @default(false)
+  isLet        Boolean? @default(false)
+  isMember     Boolean? @default(true)
+  active       Boolean? @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  userId       String   @db.ObjectId
+
+  @@map("cells_memberships")
+}
+
+model CellReport {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  date         DateTime
+  present      Int
+  visitors     Int
+  conversions  Int
+  observations String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  cell   Cell   @relation(fields: [cellId], references: [id])
+  cellId String @db.ObjectId
+
+  @@map("cells_reports")
+}
+
+model Department {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   @map("nome")
+  description String?  @map("descricao")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  church   Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  churchId String  @db.ObjectId
+  leader   User    @relation(fields: [liderId], references: [id])
+  liderId  String  @db.ObjectId
+  scales   Scale[]
+
+  @@map("departaments")
+}
+
+model Volunteer {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  unavailabilities Json?    @map("indisponibilidades")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  churchId String @db.ObjectId
+  person   User   @relation(fields: [personId], references: [id])
+  personId String @db.ObjectId
+
+  @@map("volunteers")
+}
+
+model Scale {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  date          DateTime
+  volunteers    Json
+  status        String   @default("rascunho") // rascunho, publicada
+  generatedByAI Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  church       Church     @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  churchId     String     @db.ObjectId
+  department   Department @relation(fields: [departmentId], references: [id])
+  departmentId String     @db.ObjectId
+  event        Event?     @relation(fields: [eventId], references: [id])
+  eventId      String?    @db.ObjectId
+
+  @@map("scales")
+}
+
+model Event {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  title             String
+  description       String?
+  startDate         DateTime
+  endDate           DateTime
+  isRecurring       Boolean  @default(false)
+  recurrencePattern Json?
+  status            String   @default("agendado") // agendado, emAndamento, concluido, cancelado
+  color             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  church        Church      @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  churchId      String      @db.ObjectId
+  location      Location    @relation(fields: [localId], references: [id])
+  localId       String      @db.ObjectId
+  responsible   User        @relation(fields: [responsibleId], references: [id])
+  responsibleId String      @db.ObjectId
+  scales        Scale[]
+  cult          Cult?
+  CultReport    CultReport?
+
+  @@map("events")
+}
+
+model Location {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  capacity    Int?
+  type        String // sala, auditorio, patio, estacionamento, outro
+  resources   String[] // Ex: ["projetor", "som", "cadeiras"]
+  available   Boolean  @default(true)
+  color       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  church   Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  churchId String  @db.ObjectId
+  events   Event[]
+
+  @@map("locations")
+}
+
+model Cult {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  dayOfWeek   WeekDayEnum @default(SUNDAY)
+  hour        String
+  duration    Int // em minutos
+  active      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  churchId String @db.ObjectId
+  event    Event  @relation(fields: [eventId], references: [id])
+  eventId  String @unique @map("eventoId") @db.ObjectId
+
+  @@map("cults")
+}
+
+model CultReport {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  present         Int
+  visitors        Int
+  children        Int
+  conversions     Int
+  reconciliations Int
+  offerings       Float?
+  tithes          Float?
+  preacher        String
+  theme           String?
+  observations    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  church   Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  churchId String  @db.ObjectId
+  event    Event   @relation(fields: [eventId], references: [id])
+  eventId  String  @unique @db.ObjectId
+  user     User?   @relation(fields: [userId], references: [id])
+  userId   String? @db.ObjectId
+
+  @@map("cults_reports")
+}

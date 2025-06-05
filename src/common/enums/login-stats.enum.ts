@@ -1,0 +1,6 @@
+export enum LoginStatsEnum {
+  NOT_VERIFIELD = "NOT_VERIFIELD",
+  AVAILABLE = "AVAILABLE",
+  LOCKED = "LOCKED",
+  IN_RECOVERY = "  IN_RECOVERY",
+}
